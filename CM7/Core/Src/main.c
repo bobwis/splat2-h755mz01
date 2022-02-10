@@ -46,6 +46,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 UART_HandleTypeDef huart7;
+UART_HandleTypeDef huart3;
 
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -62,6 +63,7 @@ const osThreadAttr_t defaultTask_attributes = {
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_UART7_Init(void);
+static void MX_USART3_UART_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -89,11 +91,14 @@ int main(void)
 /* USER CODE BEGIN Boot_Mode_Sequence_1 */
 	/* Wait until CPU2 boots and enters in stop mode or timeout*/
 	timeout = 0xFFFF;
-	while ((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) != RESET) && (timeout-- > 0))
-		;
-	if (timeout < 0) {
-		Error_Handler();
+	while ((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) != RESET) ) //&& (timeout-- > 0))
+	{
+		asm("nop");
 	}
+		;
+//	if (timeout < 0) {
+//		Error_Handler();
+//	}
 /* USER CODE END Boot_Mode_Sequence_1 */
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -131,6 +136,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_UART7_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -285,6 +291,54 @@ static void MX_UART7_Init(void)
 }
 
 /**
+  * @brief USART3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART3_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART3_Init 0 */
+
+  /* USER CODE END USART3_Init 0 */
+
+  /* USER CODE BEGIN USART3_Init 1 */
+
+  /* USER CODE END USART3_Init 1 */
+  huart3.Instance = USART3;
+  huart3.Init.BaudRate = 115200;
+  huart3.Init.WordLength = UART_WORDLENGTH_8B;
+  huart3.Init.StopBits = UART_STOPBITS_1;
+  huart3.Init.Parity = UART_PARITY_NONE;
+  huart3.Init.Mode = UART_MODE_TX_RX;
+  huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart3.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart3.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart3.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart3, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart3, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART3_Init 2 */
+
+  /* USER CODE END USART3_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -336,6 +390,38 @@ int __io_putchar(char ch)
     return ITM_SendChar(ch);
 }
 
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+	const unsigned char offset = 6;
+
+	HAL_StatusTypeDef stat;
+	int len;
+
+//	printf("UART3 RxCpl");
+	if (huart->Instance == USART6) { //our UART
+		data = rxdatabuf[0];
+		flag = 1;
+
+
+
+void uart3_rxdone() {
+	volatile int i = 0;
+
+
+	i++;		// bkpt placeholder
+
+//	printf("UART3 Rx Complete\n");
+}
+
+// Transmit completed callback
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+	volatile int i = 0;
+
+	if (huart->Instance == UART5) {
+
+	i++;		// bkpt placeholder
+	}
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -349,11 +435,16 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
 	unsigned int i;
+
+	printf("Hi from M7\n");
 	/* Infinite loop */
 	for (i=0;;i++) {
 		HAL_GPIO_TogglePin(LD4_SPLAT_GPIO_Port, LD4_SPLAT_Pin);
 		osDelay(210);
-		printf("%d hello\n",i);
+//		printf("%d hello from M7\n",i);
+
+		HAL_UART_Receiv(&huart3, (uint8_t*) &ch, 1, 10);
+		printf("Got %c\n",ch)
 		}
   /* USER CODE END 5 */
 }
